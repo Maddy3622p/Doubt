@@ -61,7 +61,13 @@ function App() {
     setError(''); setLoading(true); setLoadingIndex(0);
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      console.log('[Frontend] API URL:', apiUrl);
+      console.log('[Frontend] VITE_API_URL env var:', import.meta.env.VITE_API_URL);
+      console.log('[Frontend] Sending request to:', `${apiUrl}/api/generate-meme`);
       const response = await fetch(`${apiUrl}/api/generate-meme`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
+      
+      console.log('[Frontend] Response status:', response.status);
+      console.log('[Frontend] Response headers:', response.headers.get('content-type'));
       
       const contentType = response.headers.get('content-type') || '';
       
@@ -71,19 +77,24 @@ function App() {
           try {
             const errorData = await response.json();
             message = errorData.error || errorData.message || message;
+            console.error('[Frontend] API Error (JSON):', message);
           } catch {
             message = 'Backend error (invalid response format)';
+            console.error('[Frontend] Failed to parse error response');
           }
         } else {
           try {
             const text = await response.text();
             message = text.slice(0, 300) || message;
+            console.error('[Frontend] API Error (non-JSON):', message);
           } catch {
             message = `Server returned an error (${response.status})`;
+            console.error('[Frontend] Failed to read error response');
           }
         }
         throw new Error(message);
       }
+      console.log('[Frontend] Request succeeded');
       
       if (!contentType.includes('application/json')) {
         try {
@@ -99,7 +110,11 @@ function App() {
       const entry = { ...data, doubt: form.doubt, subject: form.subject, createdAt: new Date().toISOString(), form: { ...form } };
       setHistory((current) => [entry, ...current.filter((item) => item.doubt !== form.doubt)].slice(0, 8));
       setTimeout(() => document.getElementById('result')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
-    } catch (requestError) { setError(requestError.message || 'Oops. Gemini could not translate that right now. Please try again.'); }
+    } catch (requestError) { 
+      console.error('[Frontend] Request failed:', requestError);
+      console.error('[Frontend] Error message:', requestError.message);
+      setError(requestError.message || 'Oops. Gemini could not translate that right now. Please try again.'); 
+    }
     finally { setLoading(false); }
   }
 
