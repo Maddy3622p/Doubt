@@ -5,7 +5,8 @@ import { generateMeme } from './services/geminiService.js';
 
 const app = express();
 const port = Number(process.env.PORT) || 5000;
-app.use(cors());
+const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+app.use(cors({ origin: frontendUrl }));
 app.use(express.json({ limit: '20kb' }));
 
 app.get('/api/health', (_request, response) => response.json({ status: 'ok' }));
@@ -27,4 +28,4 @@ app.post('/api/generate-meme', async (request, response) => {
   }
 });
 app.use((_request, response) => response.status(404).json({ error: 'Route not found' }));
-app.listen(port, () => console.log(`Doubt to Meme API listening on http://localhost:${port}`));
+app.listen(port, '0.0.0.0', () => console.log(`Doubt to Meme API listening on port ${port}`));

@@ -60,9 +60,41 @@ function App() {
     if (form.doubt.trim().length < 8) { setError('Add a little more detail so Gemini can make the explanation useful.'); return; }
     setError(''); setLoading(true); setLoadingIndex(0);
     try {
-      const response = await fetch('/api/generate-meme', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiUrl}/api/generate-meme`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
+      
+      const contentType = response.headers.get('content-type') || '';
+      
+      if (!response.ok) {
+        let message = 'Something went wrong';
+        if (contentType.includes('application/json')) {
+          try {
+            const errorData = await response.json();
+            message = errorData.error || errorData.message || message;
+          } catch {
+            message = 'Backend error (invalid response format)';
+          }
+        } else {
+          try {
+            const text = await response.text();
+            message = text.slice(0, 300) || message;
+          } catch {
+            message = `Server returned an error (${response.status})`;
+          }
+        }
+        throw new Error(message);
+      }
+      
+      if (!contentType.includes('application/json')) {
+        try {
+          const text = await response.text();
+          throw new Error(`Backend returned a non-JSON response: ${text.slice(0, 300)}`);
+        } catch {
+          throw new Error('Backend returned an invalid response format');
+        }
+      }
+      
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Something went wrong');
       setResult(data);
       const entry = { ...data, doubt: form.doubt, subject: form.subject, createdAt: new Date().toISOString(), form: { ...form } };
       setHistory((current) => [entry, ...current.filter((item) => item.doubt !== form.doubt)].slice(0, 8));
