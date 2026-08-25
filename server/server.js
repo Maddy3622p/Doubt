@@ -6,30 +6,36 @@ import { generateMeme } from './services/geminiService.js';
 const app = express();
 const port = Number(process.env.PORT) || 5000;
 
-// Allow both production and development origins
+// CORS configuration for production
 const corsOptions = {
-  origin: (origin, callback) => {
+  origin: function(origin, callback) {
+    // Allowed origins: local dev and production frontend
     const allowedOrigins = [
-      'http://localhost:5173',
-      'http://localhost:5000',
-      process.env.FRONTEND_URL
-    ].filter(Boolean);
+      'http://localhost:5173',     // Vite dev server
+      'http://localhost:5000',     // Local backend
+      'https://doubttomeme.vercel.app',  // Production Vercel frontend (explicit)
+      process.env.FRONTEND_URL      // Also allow from env variable if different
+    ].filter(Boolean); // Remove undefined/empty values
     
-    console.log('[CORS] Incoming origin:', origin);
+    // Log for debugging
+    console.log('[CORS] Request origin:', origin);
     console.log('[CORS] Allowed origins:', allowedOrigins);
-    console.log('[CORS] FRONTEND_URL env:', process.env.FRONTEND_URL);
+    console.log('[CORS] FRONTEND_URL env:', process.env.FRONTEND_URL || 'NOT SET');
     
+    // Allow requests with no origin (like mobile apps, curl, etc.) or matching origins
     if (!origin || allowedOrigins.includes(origin)) {
-      console.log('[CORS] ✅ Origin allowed');
+      console.log('[CORS] ✅ ALLOWED:', origin);
       callback(null, true);
     } else {
-      console.error('[CORS] ❌ Origin rejected:', origin);
-      callback(new Error('Not allowed by CORS'));
+      console.error('[CORS] ❌ REJECTED:', origin);
+      callback(new Error('CORS policy: Origin not allowed'));
     }
   },
   credentials: true,
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type']
+  methods: ['GET', 'POST', 'OPTIONS', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Content-Type'],
+  maxAge: 86400 // 24 hours
 };
 
 app.use(cors(corsOptions));
@@ -75,8 +81,14 @@ app.use((_request, response) => response.status(404).json({ error: 'Route not fo
 app.listen(port, '0.0.0.0', () => {
   console.log(`\n========================================`);
   console.log(`Doubt to Meme API listening on port ${port}`);
-  console.log(`FRONTEND_URL env: ${process.env.FRONTEND_URL}`);
-  console.log(`Allowed CORS origins: http://localhost:5173, http://localhost:5000, ${process.env.FRONTEND_URL}`);
+  console.log(`FRONTEND_URL env: ${process.env.FRONTEND_URL || 'NOT SET'}`);
+  console.log(`Allowed CORS origins:`);
+  console.log(`  - http://localhost:5173 (dev)`);
+  console.log(`  - http://localhost:5000 (local backend)`);
+  console.log(`  - https://doubttomeme.vercel.app (PRODUCTION)`);
+  if (process.env.FRONTEND_URL && process.env.FRONTEND_URL !== 'https://doubttomeme.vercel.app') {
+    console.log(`  - ${process.env.FRONTEND_URL} (env variable)`);
+  }
   console.log(`GEMINI_API_KEY set: ${process.env.GEMINI_API_KEY ? '✅ YES' : '❌ NO'}`);
   console.log(`========================================\n`);
 });
