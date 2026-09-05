@@ -1,6 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 
-const TEXT_MODEL = 'gemini-2.5-flash-lite';
+const TEXT_MODEL = 'gemini-3.5-flash-lite';
 const IMAGE_MODEL = 'gemini-2.5-flash-image';
 const TEXT_TIMEOUT_MS = 30000;
 const IMAGE_TIMEOUT_MS = 45000;
