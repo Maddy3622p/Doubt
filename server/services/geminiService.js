@@ -1,23 +1,19 @@
 import { GoogleGenAI } from '@google/genai';
 
 const TEXT_MODEL = 'gemini-3.5-flash-lite';
-const IMAGE_MODEL = 'gemini-3.1-flash-image';
 const TEXT_TIMEOUT_MS = 30000;
-const IMAGE_TIMEOUT_MS = 45000;
 
 const responseSchema = {
   type: 'object',
   properties: {
-    concept: { type: 'string' },
-    simpleExplanation: { type: 'string' },
-    keyPoint: { type: 'string' },
-    memeSetup: { type: 'string' },
-    memePunchline: { type: 'string' },
-    memeCaption: { type: 'string' },
-    hashtags: { type: 'array', items: { type: 'string' } },
-    imagePrompt: { type: 'string' },
+    explanation: { type: 'string' },
+    memeTitle: { type: 'string' },
+    scene: { type: 'string' },
+    characters: { type: 'array', items: { type: 'string' } },
+    caption: { type: 'string' },
+    educationalTakeaway: { type: 'string' },
   },
-  required: ['concept', 'simpleExplanation', 'keyPoint', 'memeSetup', 'memePunchline', 'memeCaption', 'hashtags', 'imagePrompt'],
+  required: ['explanation', 'memeTitle', 'scene', 'characters', 'caption', 'educationalTakeaway'],
 };
 
 function getClient() {
@@ -40,9 +36,9 @@ function parseJson(text) {
 async function generateTextContent({ doubt, subject, difficulty, style }) {
   const response = await withTimeout(getClient().models.generateContent({
     model: TEXT_MODEL,
-    contents: `You are an expert teacher and friendly meme creator for college students. Explain the academic doubt accurately in beginner-friendly language, then create safe, relatable meme copy. Return JSON only matching the schema.
+    contents: `You are an expert teacher and friendly meme creator for college students. Explain the academic doubt accurately, then design a simple visual meme scene that a browser can render with shapes, colors, and text. Return JSON only matching the schema.
 
-The imagePrompt must be a concise but specific prompt for an image model. Include the educational concept, funny situation, characters, environment, visual actions, meme-style humor, and a short readable caption only if useful. Keep the scene simple, student-appropriate, original, and free of logos or copyrighted characters. Do not rely on the image model to render long paragraphs of text.
+The scene should be funny, educational, visually clear, student-friendly, original, and free of logos or copyrighted characters. Describe the setting and visual action in a way that can be represented with a few characters and simple props. Keep the caption short and readable.
 
 Doubt: ${doubt}
 Subject: ${subject}
@@ -63,46 +59,29 @@ Meme style: ${style}`,
 function withTimeout(promise, timeoutMs) {
   return Promise.race([
     promise,
-    new Promise((_, reject) => setTimeout(() => reject(new Error('Image generation timed out')), timeoutMs)),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Gemini request timed out')), timeoutMs)),
   ]);
-}
-
-async function generateMemeImage(imagePrompt) {
-  try {
-    const interaction = await withTimeout(getClient().interactions.create({
-      model: IMAGE_MODEL,
-      input: imagePrompt,
-      response_modalities: ['image'],
-      generation_config: { image_config: { aspect_ratio: '16:9', image_size: '1K' } },
-    }), IMAGE_TIMEOUT_MS);
-    const imageOutput = interaction.outputs?.find((output) => output.type === 'image' && output.data);
-    if (!imageOutput) return null;
-    return `data:${imageOutput.mime_type || 'image/png'};base64,${imageOutput.data}`;
-  } catch (error) {
-    const message = error.message || 'Unknown image-generation error';
-    if (error.status === 429 || error.code === 429 || message.includes('RESOURCE_EXHAUSTED')) {
-      console.warn('[Gemini] Image-generation quota unavailable; using text/emoji fallback.');
-    } else {
-      console.warn('[Gemini] Image generation unavailable; using text/emoji fallback:', message);
-    }
-    return null;
-  }
 }
 
 export async function generateMeme({ doubt, subject, difficulty, style }) {
   const textContent = await generateTextContent({ doubt, subject, difficulty, style });
-  const image = await generateMemeImage(textContent.imagePrompt);
+  const meme = {
+    title: textContent.memeTitle,
+    scene: textContent.scene,
+    characters: Array.isArray(textContent.characters) ? textContent.characters.slice(0, 4) : [],
+    caption: textContent.caption,
+    educationalTakeaway: textContent.educationalTakeaway,
+  };
   return {
-    concept: textContent.concept,
-    simpleExplanation: textContent.simpleExplanation,
-    keyPoint: textContent.keyPoint,
-    memeSetup: textContent.memeSetup,
-    memePunchline: textContent.memePunchline,
-    memeCaption: textContent.memeCaption,
-    hashtags: textContent.hashtags,
-    image,
-    imageGenerated: Boolean(image),
-    imagePrompt: textContent.imagePrompt,
-    fallback: !image,
+    success: true,
+    explanation: textContent.explanation,
+    meme,
+    concept: textContent.memeTitle,
+    simpleExplanation: textContent.explanation,
+    keyPoint: textContent.educationalTakeaway,
+    memeSetup: textContent.scene,
+    memePunchline: textContent.caption,
+    memeCaption: textContent.caption,
+    hashtags: [],
   };
 }

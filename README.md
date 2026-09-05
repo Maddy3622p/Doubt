@@ -68,7 +68,7 @@ server/services/geminiService.js   Isolated Gemini integration
 }
 ```
 
-The response contains `concept`, `simpleExplanation`, `keyPoint`, `memeSetup`, `memePunchline`, `memeCaption`, `hashtags`, `image`, `imageGenerated`, and `fallback`. `image` is a backend-created data URL when image generation succeeds; otherwise the frontend keeps the existing text meme fallback.
+The response contains `success`, `explanation`, and a structured `meme` object with `title`, `scene`, `characters`, `caption`, and `educationalTakeaway`. The frontend renders that structured data locally with React, SVG, and CSS.
 
 ## Testing
 

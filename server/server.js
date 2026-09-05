@@ -70,7 +70,6 @@ app.post('/api/generate-meme', async (request, response) => {
     console.log('[Backend] ✅ Validation passed, calling Gemini...');
     const result = await generateMeme({ doubt: doubt.trim(), subject, difficulty, style });
     console.log('[Backend] ✅ Gemini response received successfully');
-    console.log('[Backend] Image generated:', result.imageGenerated);
     return response.json(result);
   } catch (error) {
     console.error('[Backend] ❌ Gemini request failed:', error.message);
