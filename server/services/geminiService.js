@@ -1,7 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 
 const TEXT_MODEL = 'gemini-3.5-flash-lite';
-const IMAGE_MODEL = 'gemini-2.5-flash-image';
+const IMAGE_MODEL = 'gemini-3.1-flash-image';
 const TEXT_TIMEOUT_MS = 30000;
 const IMAGE_TIMEOUT_MS = 45000;
 
@@ -69,18 +69,22 @@ function withTimeout(promise, timeoutMs) {
 
 async function generateMemeImage(imagePrompt) {
   try {
-    const response = await withTimeout(getClient().models.generateContent({
+    const interaction = await withTimeout(getClient().interactions.create({
       model: IMAGE_MODEL,
-      contents: imagePrompt,
-      config: { responseModalities: ['TEXT', 'IMAGE'], imageConfig: { aspectRatio: '1:1' } },
+      input: imagePrompt,
+      response_modalities: ['image'],
+      generation_config: { image_config: { aspect_ratio: '16:9', image_size: '1K' } },
     }), IMAGE_TIMEOUT_MS);
-    const parts = response.candidates?.[0]?.content?.parts || [];
-    const imagePart = parts.find((part) => part.inlineData?.data);
-    if (!imagePart) return null;
-    const { data, mimeType = 'image/png' } = imagePart.inlineData;
-    return `data:${mimeType};base64,${data}`;
+    const imageOutput = interaction.outputs?.find((output) => output.type === 'image' && output.data);
+    if (!imageOutput) return null;
+    return `data:${imageOutput.mime_type || 'image/png'};base64,${imageOutput.data}`;
   } catch (error) {
-    console.warn('[Gemini] Image generation unavailable:', error.message);
+    const message = error.message || 'Unknown image-generation error';
+    if (error.status === 429 || error.code === 429 || message.includes('RESOURCE_EXHAUSTED')) {
+      console.warn('[Gemini] Image-generation quota unavailable; using text/emoji fallback.');
+    } else {
+      console.warn('[Gemini] Image generation unavailable; using text/emoji fallback:', message);
+    }
     return null;
   }
 }
