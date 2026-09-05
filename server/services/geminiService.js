@@ -9,11 +9,39 @@ const responseSchema = {
     explanation: { type: 'string' },
     memeTitle: { type: 'string' },
     scene: { type: 'string' },
-    characters: { type: 'array', items: { type: 'string' } },
+    visualConcept: { type: 'string' },
+    characters: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          emoji: { type: 'string' },
+          role: { type: 'string' },
+          expression: { type: 'string' },
+          dialogue: { type: 'string' },
+           position: { type: 'string' },
+        },
+          required: ['name', 'emoji', 'role', 'expression', 'dialogue', 'position'],
+      },
+    },
+    objects: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          emoji: { type: 'string' },
+          position: { type: 'string' },
+          action: { type: 'string' },
+        },
+        required: ['name', 'emoji', 'position', 'action'],
+      },
+    },
     caption: { type: 'string' },
     educationalTakeaway: { type: 'string' },
   },
-  required: ['explanation', 'memeTitle', 'scene', 'characters', 'caption', 'educationalTakeaway'],
+  required: ['explanation', 'memeTitle', 'scene', 'visualConcept', 'characters', 'objects', 'caption', 'educationalTakeaway'],
 };
 
 function getClient() {
@@ -36,9 +64,9 @@ function parseJson(text) {
 async function generateTextContent({ doubt, subject, difficulty, style }) {
   const response = await withTimeout(getClient().models.generateContent({
     model: TEXT_MODEL,
-    contents: `You are an expert teacher and friendly meme creator for college students. Explain the academic doubt accurately, then design a simple visual meme scene that a browser can render with shapes, colors, and text. Return JSON only matching the schema.
+    contents: `You are an expert teacher and friendly meme creator for college students. Explain the academic doubt accurately, then design a distinct visual meme scene that a browser can render with SVG shapes, emojis, colors, and text. Return JSON only matching the schema.
 
-The scene should be funny, educational, visually clear, student-friendly, original, and free of logos or copyrighted characters. Describe the setting and visual action in a way that can be represented with a few characters and simple props. Keep the caption short and readable.
+  The visualConcept must summarize the actual visual metaphor for this specific doubt. Choose characters, objects, actions, positions, and expressions that are relevant to the doubt, subject, difficulty, and meme style. Use character positions such as left, right, center, top, or bottom, and object positions such as left, right, center, top, or bottom. Do not reuse a generic classroom composition. The scene should be funny, educational, visually clear, student-friendly, original, and free of logos or copyrighted characters. Use 1-4 characters and 1-6 objects. Keep the caption short and readable.
 
 Doubt: ${doubt}
 Subject: ${subject}
@@ -68,7 +96,9 @@ export async function generateMeme({ doubt, subject, difficulty, style }) {
   const meme = {
     title: textContent.memeTitle,
     scene: textContent.scene,
+    visualConcept: textContent.visualConcept,
     characters: Array.isArray(textContent.characters) ? textContent.characters.slice(0, 4) : [],
+    objects: Array.isArray(textContent.objects) ? textContent.objects.slice(0, 6) : [],
     caption: textContent.caption,
     educationalTakeaway: textContent.educationalTakeaway,
   };

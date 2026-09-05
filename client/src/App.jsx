@@ -27,28 +27,92 @@ function getVisualVariant(result, doubt) {
   return visualVariants[hash % visualVariants.length];
 }
 
+function hashText(value = '') {
+  return [...value].reduce((total, character) => (total * 31 + character.charCodeAt(0)) % 997, 17);
+}
+
+function getScenePalette(concept, visual) {
+  const palettes = [
+    { background: '#dff3f2', ground: '#316c72', accent: '#ff765d', highlight: '#f4c95d' },
+    { background: '#e9e0f8', ground: '#5550a2', accent: '#f29e4c', highlight: '#c7e36b' },
+    { background: '#e8f2cf', ground: '#416e59', accent: '#6e72bb', highlight: '#ffb45c' },
+    { background: '#f8dfd4', ground: '#87536d', accent: '#4c8fc2', highlight: '#d4f36a' },
+  ];
+  return palettes[(hashText(`${concept}${visual.className}`)) % palettes.length];
+}
+
+function normalizeCharacters(characters) {
+  return (Array.isArray(characters) ? characters : []).slice(0, 4).map((character, index) => typeof character === 'string'
+    ? { name: character, emoji: index % 2 ? '🧠' : '🧑‍🎓', role: 'participant', expression: 'curious', dialogue: '', position: index % 2 ? 'right' : 'left' }
+    : { name: character.name || `Character ${index + 1}`, emoji: character.emoji || '🧑‍🎓', role: character.role || 'participant', expression: character.expression || 'curious', dialogue: character.dialogue || '', position: character.position || (index % 2 ? 'right' : 'left') });
+}
+
+function normalizeObjects(objects) {
+  return (Array.isArray(objects) ? objects : []).slice(0, 6).map((object, index) => typeof object === 'string'
+    ? { name: object, emoji: '✨', position: index % 2 ? 'right' : 'left', action: 'appears' }
+    : { name: object.name || `Object ${index + 1}`, emoji: object.emoji || '✨', position: object.position || 'center', action: object.action || 'appears' });
+}
+
+function scenePosition(position, index, total) {
+  const slots = { left: [170, 350], right: [1030, 350], top: [600, 190], bottom: [600, 610], center: [600, 380] };
+  if (slots[position]) return slots[position];
+  const spread = total > 1 ? 760 / (total - 1) : 0;
+  return [220 + (index * spread), index % 2 ? 490 : 330];
+}
+
+function wrapSvgText(text, maxCharacters) {
+  const words = String(text || '').trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return [''];
+  const lines = [];
+  let line = '';
+  words.forEach((word) => {
+    const candidate = line ? `${line} ${word}` : word;
+    if (line && candidate.length > maxCharacters) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = candidate;
+    }
+  });
+  if (line) lines.push(line);
+  return lines;
+}
+
+function SvgWrappedText({ text, x, y, maxWidth, fontSize, lineHeight, fill, fontWeight = '400', anchor = 'middle' }) {
+  const lines = wrapSvgText(text, Math.max(8, Math.floor(maxWidth / (fontSize * 0.56))));
+  const firstLineY = y - ((lines.length - 1) * lineHeight) / 2;
+  return <text x={x} y={firstLineY} textAnchor={anchor} fill={fill} fontSize={fontSize} fontWeight={fontWeight}>{lines.map((line, index) => <tspan key={`${line}-${index}`} x={x} dy={index === 0 ? 0 : lineHeight}>{line}</tspan>)}</text>;
+}
+
 function MemeScene({ meme, visual, memeRef }) {
-  const characters = meme?.characters || [];
-  const characterLabels = characters.length > 0 ? characters : ['Student', 'The concept'];
+  const concept = meme?.visualConcept || meme?.scene || meme?.title || 'academic plot twist';
+  const palette = getScenePalette(concept, visual);
+  const characters = normalizeCharacters(meme?.characters);
+  const objects = normalizeObjects(meme?.objects);
+  const objectCoordinates = objects.map((object, index) => scenePosition(object.position, index, objects.length));
+  const hasActionFlow = objects.some((object) => /call|flow|toward|pull|fall|split|search|absorb|convert|repeat|loop|connect/i.test(object.action));
+  const characterLabels = characters.length > 0 ? characters.map((character) => character.name) : ['Student'];
+  const titleLines = wrapSvgText(meme?.title || 'The academic plot twist', 54);
+  const captionLines = wrapSvgText(meme?.caption || 'When the concept finally clicks.', 58);
+  const titlePanelHeight = Math.max(104, 30 + titleLines.length * 38);
+  const captionPanelHeight = Math.max(110, 34 + captionLines.length * 30);
   return <div className={`meme-card ${visual.className}`} ref={memeRef}>
-    <svg className="meme-scene" viewBox="0 0 800 450" role="img" aria-labelledby="meme-scene-title meme-scene-description">
+    <svg className="meme-scene" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="meme-scene-title meme-scene-description">
       <title id="meme-scene-title">{meme?.title || 'Educational meme'}</title>
-      <desc id="meme-scene-description">{meme?.scene || 'A funny educational scene'}</desc>
-      <rect width="800" height="450" fill={visual.background.includes('145deg') ? '#d9f0ef' : '#d9f0ef'} />
-      <circle cx="690" cy="72" r="40" fill="#f4c95d" opacity=".9" />
-      <rect y="300" width="800" height="150" fill={visual.desk} opacity=".9" />
-      <rect x="55" y="80" width="230" height="160" rx="14" fill="#f7f4e9" stroke="#243332" strokeWidth="6" />
-      <path d="M80 125h175M80 160h125M80 195h155" stroke="#a8c4c1" strokeWidth="12" strokeLinecap="round" />
-      <g transform="translate(180 205)"><circle r="52" fill="#f4a582" stroke="#243332" strokeWidth="6" /><path d="M-36-8c12-40 65-42 76 1" fill="#3f4d53" /><circle cx="-17" cy="7" r="6" fill="#243332" /><circle cx="18" cy="7" r="6" fill="#243332" /><path d="M-17 28q17 14 34 0" fill="none" stroke="#243332" strokeWidth="6" strokeLinecap="round" /><path d="M-62 68q62-38 124 0v58h-124z" fill={visual.background.includes('145deg') ? '#ff765d' : '#8de5ee'} stroke="#243332" strokeWidth="6" /></g>
-      <g transform="translate(540 205)"><circle r="52" fill="#b7d7a8" stroke="#243332" strokeWidth="6" /><path d="M-42-12q42-68 84 0" fill="#416e59" /><circle cx="-17" cy="9" r="6" fill="#243332" /><circle cx="18" cy="9" r="6" fill="#243332" /><path d="M-22 30q22-18 44 0" fill="none" stroke="#243332" strokeWidth="6" strokeLinecap="round" /><path d="M-62 68q62-38 124 0v58h-124z" fill="#d4f36a" stroke="#243332" strokeWidth="6" /></g>
-      <path d="M260 205h205" stroke="#243332" strokeWidth="6" strokeDasharray="12 14" markerEnd="url(#arrow)" />
-      <defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#243332" /></marker></defs>
-      <rect x="28" y="24" width="744" height="48" rx="12" fill="#101414" opacity=".9" />
-      <text x="400" y="56" textAnchor="middle" fill="#f4f3ed" fontSize="22" fontWeight="700">{meme?.title || 'The academic plot twist'}</text>
-      <rect x="250" y="370" width="300" height="52" rx="12" fill="#101414" opacity=".94" />
-      <text x="400" y="403" textAnchor="middle" fill="#d4f36a" fontSize="19" fontWeight="700">{meme?.caption || 'When the concept finally clicks.'}</text>
+      <desc id="meme-scene-description">{meme?.scene || concept}</desc>
+      <rect width="1200" height="800" fill={palette.background} />
+      <circle cx={180 + (hashText(concept) % 820)} cy="130" r={45 + (hashText(concept) % 35)} fill={palette.highlight} opacity=".8" />
+      <path d="M0 610 Q300 535 600 610 T1200 590V800H0Z" fill={palette.ground} opacity=".92" />
+      <rect x="32" y="20" width="1136" height={titlePanelHeight} rx="18" fill="#101414" opacity=".92" />
+      <SvgWrappedText text={meme?.title || 'The academic plot twist'} x={600} y={20 + titlePanelHeight / 2 + 12} maxWidth={1060} fontSize={34} lineHeight={38} fill="#f4f3ed" fontWeight="700" />
+      {objects.map((object, index) => { const [x, y] = objectCoordinates[index]; const nameLines = wrapSvgText(object.name, 14); const actionLines = wrapSvgText(object.action, 22); const cardHeight = 58 + (nameLines.length * 18) + (actionLines.length * 15); return <g key={`${object.name}-${index}`} transform={`translate(${x} ${y})`}><rect x="-92" y={-cardHeight / 2} width="184" height={cardHeight} rx="20" fill="#f7f4e9" stroke={palette.accent} strokeWidth="7" /><text x="0" y={-cardHeight / 2 + 44} textAnchor="middle" fontSize="46">{object.emoji}</text><SvgWrappedText text={object.name} x={0} y={-cardHeight / 2 + 76} maxWidth={160} fontSize={15} lineHeight={18} fill="#243332" fontWeight="700" /><SvgWrappedText text={object.action} x={0} y={cardHeight / 2 - 12} maxWidth={160} fontSize={11} lineHeight={15} fill="#243332" /></g>; })}
+      {characters.map((character, index) => { const [x, y] = scenePosition(character.position, index, characters.length); const nameLines = wrapSvgText(character.name, 16); const expressionLines = wrapSvgText(character.expression, 20); const dialogueLines = wrapSvgText(character.dialogue, 31); const bubbleHeight = Math.max(62, 24 + dialogueLines.length * 22); return <g key={`${character.name}-${index}`} transform={`translate(${x} ${y + 80})`}><circle r="74" fill="#f4a582" stroke="#243332" strokeWidth="8" /><text x="0" y="22" textAnchor="middle" fontSize="72">{character.emoji}</text><rect x="-120" y="88" width="240" height={58 + nameLines.length * 20 + expressionLines.length * 16} rx="22" fill={index % 2 ? palette.highlight : palette.accent} stroke="#243332" strokeWidth="7" /><SvgWrappedText text={character.name} x={0} y={116} maxWidth={210} fontSize={18} lineHeight={20} fill="#101414" fontWeight="700" /><SvgWrappedText text={character.expression} x={0} y={142 + nameLines.length * 20} maxWidth={210} fontSize={14} lineHeight={16} fill="#101414" />{character.dialogue && <g transform={`translate(0 ${-bubbleHeight - 20})`}><rect x="-155" y={-bubbleHeight / 2} width="310" height={bubbleHeight} rx="18" fill="#f7f4e9" stroke="#243332" strokeWidth="5" /><SvgWrappedText text={character.dialogue} x={0} y={0} maxWidth={280} fontSize={15} lineHeight={22} fill="#243332" /></g>}</g>; })}
+      {hasActionFlow && objectCoordinates.slice(1).map(([x, y], index) => { const [previousX, previousY] = objectCoordinates[index]; return <path key={`flow-${index}`} d={`M${previousX} ${previousY} Q${(previousX + x) / 2} ${Math.min(previousY, y) - 80} ${x} ${y}`} fill="none" stroke={palette.accent} strokeWidth="9" strokeDasharray="18 18" markerEnd="url(#scene-arrow)" />; })}
+      <defs><marker id="scene-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill={palette.accent} /></marker></defs>
+      <rect x="120" y={800 - captionPanelHeight - 20} width="960" height={captionPanelHeight} rx="20" fill="#101414" opacity=".94" />
+      <SvgWrappedText text={meme?.caption || 'When the concept finally clicks.'} x={600} y={800 - captionPanelHeight / 2 - 4} maxWidth={900} fontSize={25} lineHeight={30} fill="#d4f36a" fontWeight="700" />
     </svg>
-    <div className="meme-scene-meta"><span>{characterLabels.join(' · ')}</span><span>{meme?.scene}</span></div>
+    <div className="meme-scene-meta"><span>{characterLabels.join(' · ')}</span><span>{concept}</span></div>
   </div>;
 }
 
