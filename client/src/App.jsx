@@ -61,14 +61,7 @@ function App() {
     setError(''); setLoading(true); setLoadingIndex(0);
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      console.log('[Frontend] API URL:', apiUrl);
-      console.log('[Frontend] VITE_API_URL env var:', import.meta.env.VITE_API_URL);
-      console.log('[Frontend] Sending request to:', `${apiUrl}/api/generate-meme`);
       const response = await fetch(`${apiUrl}/api/generate-meme`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
-      
-      console.log('[Frontend] Response status:', response.status);
-      console.log('[Frontend] Response headers:', response.headers.get('content-type'));
-      
       const contentType = response.headers.get('content-type') || '';
       
       if (!response.ok) {
@@ -77,25 +70,19 @@ function App() {
           try {
             const errorData = await response.json();
             message = errorData.error || errorData.message || message;
-            console.error('[Frontend] API Error (JSON):', message);
           } catch {
             message = 'Backend error (invalid response format)';
-            console.error('[Frontend] Failed to parse error response');
           }
         } else {
           try {
             const text = await response.text();
             message = text.slice(0, 300) || message;
-            console.error('[Frontend] API Error (non-JSON):', message);
           } catch {
             message = `Server returned an error (${response.status})`;
-            console.error('[Frontend] Failed to read error response');
           }
         }
         throw new Error(message);
       }
-      console.log('[Frontend] Request succeeded');
-      
       if (!contentType.includes('application/json')) {
         try {
           const text = await response.text();
@@ -110,9 +97,7 @@ function App() {
       const entry = { ...data, doubt: form.doubt, subject: form.subject, createdAt: new Date().toISOString(), form: { ...form } };
       setHistory((current) => [entry, ...current.filter((item) => item.doubt !== form.doubt)].slice(0, 8));
       setTimeout(() => document.getElementById('result')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
-    } catch (requestError) { 
-      console.error('[Frontend] Request failed:', requestError);
-      console.error('[Frontend] Error message:', requestError.message);
+    } catch (requestError) {
       setError(requestError.message || 'Oops. Gemini could not translate that right now. Please try again.'); 
     }
     finally { setLoading(false); }
@@ -156,7 +141,7 @@ function App() {
       <section className="examples-section section-wrap" id="examples"><div className="examples-intro"><span className="section-kicker">NEED A STARTER?</span><h2>Try these <span>🔥</span></h2><p>Popular questions, pre-loaded and ready to go.</p></div><div className="example-list">{examples.map((example) => <button className="example-item" key={example.doubt} onClick={() => chooseExample(example.doubt, example.subject)}><span className="example-tag">{example.tag}</span><span>{example.doubt}</span><ArrowRight size={16} /></button>)}</div></section>
 
       {loading && <section className="loading-state"><div className="loader-orbit"><Sparkles size={24} /></div><p>{loadingMessages[loadingIndex]}</p><div className="loading-progress"><i /></div></section>}
-      {result && !loading && <section className="result-section section-wrap" id="result"><div className="result-heading"><div><span className="section-kicker">TRANSLATION COMPLETE</span><h2>Here’s what you <span>meant.</span></h2></div><button className="button button-quiet" onClick={() => { setResult(null); document.getElementById('translate')?.scrollIntoView({ behavior: 'smooth' }); }}><RefreshCw size={15} /> New doubt</button></div><div className="result-grid"><div className="explanation-column"><article className="concept-card"><div className="card-icon blue-icon">✦</div><div><span className="card-label">THE CONCEPT</span><h3>{result.concept}</h3><p>{result.simpleExplanation}</p></div></article><article className="keypoint-card"><span className="card-label">THE ONE THING TO REMEMBER</span><p>{result.keyPoint}</p></article><button className="text-action" onClick={copyExplanation}><Clipboard size={15} /> Copy explanation</button></div><div className="meme-column"><div className="meme-title"><span>😂</span><h3>Your meme</h3><span className="meme-style">{form.style}</span></div><div className={`meme-card ${visual.className}`} ref={memeRef}><div className="meme-top-text">{result.memeSetup}</div><div className="meme-visual" style={{ background: visual.background }}><div className="visual-sun" /><div className="visual-face">{visual.emoji}</div><div className="visual-desk" style={{ background: visual.desk }} /></div><div className="meme-bottom-text">{result.memePunchline}</div></div><div className="caption"><span className="card-label">CAPTION</span><p>{result.memeCaption}</p><div className="hashtags">{result.hashtags?.map((tag) => <span key={tag}>{tag}</span>)}</div></div><div className="meme-actions"><button onClick={copyMeme}><Clipboard size={15} /> Copy text</button><button onClick={downloadMeme}><Download size={15} /> Download</button><button onClick={share}><Link2 size={15} /> Share</button></div></div></div></section>}
+      {result && !loading && <section className="result-section section-wrap" id="result"><div className="result-heading"><div><span className="section-kicker">TRANSLATION COMPLETE</span><h2>Here’s what you <span>meant.</span></h2></div><button className="button button-quiet" onClick={() => { setResult(null); document.getElementById('translate')?.scrollIntoView({ behavior: 'smooth' }); }}><RefreshCw size={15} /> New doubt</button></div><div className="result-grid"><div className="explanation-column"><article className="concept-card"><div className="card-icon blue-icon">✦</div><div><span className="card-label">THE CONCEPT</span><h3>{result.concept}</h3><p>{result.simpleExplanation}</p></div></article><article className="keypoint-card"><span className="card-label">THE ONE THING TO REMEMBER</span><p>{result.keyPoint}</p></article><button className="text-action" onClick={copyExplanation}><Clipboard size={15} /> Copy explanation</button></div><div className="meme-column"><div className="meme-title"><span>😂</span><h3>Your meme</h3><span className="meme-style">{form.style}</span></div><div className={`meme-card ${visual.className}`} ref={memeRef}>{result.image ? <img className="generated-meme-image" src={result.image} alt={`Educational meme about ${result.concept}`} style={{ display: 'block', width: '100%', height: 'auto', aspectRatio: '1 / 1', objectFit: 'cover' }} /> : <><div className="meme-top-text">{result.memeSetup}</div><div className="meme-visual" style={{ background: visual.background }}><div className="visual-sun" /><div className="visual-face">{visual.emoji}</div><div className="visual-desk" style={{ background: visual.desk }} /></div><div className="meme-bottom-text">{result.memePunchline}</div></>} </div>{result.fallback && <p className="image-fallback" role="status">Image generation was unavailable, so the text meme is shown instead.</p>}<div className="caption"><span className="card-label">CAPTION</span><p>{result.memeCaption}</p><div className="hashtags">{result.hashtags?.map((tag) => <span key={tag}>{tag}</span>)}</div></div><div className="meme-actions"><button onClick={copyMeme}><Clipboard size={15} /> Copy text</button><button onClick={downloadMeme}><Download size={15} /> Download</button><button onClick={share}><Link2 size={15} /> Share</button></div></div></div></section>}
 
       <section className="history-section section-wrap" id="history"><div className="history-heading"><div><span className="section-kicker">YOUR TRAIL</span><h2>Recent <span>doubts.</span></h2></div>{history.length > 0 && <button className="text-action danger" onClick={() => setHistory([])}><Trash2 size={14} /> Clear history</button>}</div>{history.length === 0 ? <div className="empty-history"><History size={24} /><p>Your translations will hang out here.</p><span>Ask your first doubt to start a trail of aha moments.</span></div> : <div className="history-list">{history.map((item) => <button className="history-item" key={item.createdAt + item.doubt} onClick={() => reopen(item)}><span className="history-icon">✦</span><span className="history-doubt">{item.doubt}<small>{item.subject} · {new Date(item.createdAt).toLocaleDateString()}</small></span><span className="history-concept">{item.concept}</span><ArrowRight size={15} /></button>)}</div>}</section>
     </main>

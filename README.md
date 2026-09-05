@@ -4,7 +4,7 @@ Turn academic doubts into simple explanations and relatable memes powered by Goo
 
 ## Features
 
-- Gemini-powered concept identification, beginner-friendly explanation, key takeaway, and meme copy
+- Gemini-powered concept identification, beginner-friendly explanation, key takeaway, meme copy, and generated meme artwork
 - Meme-style result card with PNG download, copy, and Web Share support
 - Subject, difficulty, and meme energy controls
 - Rotating processing state, validation, friendly API errors, and toast feedback
@@ -15,7 +15,7 @@ Turn academic doubts into simple explanations and relatable memes powered by Goo
 
 - Frontend: React, Vite, JavaScript, CSS3, Lucide React, html-to-image
 - Backend: Node.js, Express, CORS
-- AI: official `@google/genai` SDK with `gemini-3.6-flash`
+- AI: official `@google/genai` SDK with `gemini-2.5-flash-lite` and `gemini-2.5-flash-image`
 
 ## Installation
 
@@ -68,7 +68,7 @@ server/services/geminiService.js   Isolated Gemini integration
 }
 ```
 
-The response contains `concept`, `simpleExplanation`, `keyPoint`, `memeSetup`, `memePunchline`, `memeCaption`, and `hashtags`.
+The response contains `concept`, `simpleExplanation`, `keyPoint`, `memeSetup`, `memePunchline`, `memeCaption`, `hashtags`, `image`, `imageGenerated`, and `fallback`. `image` is a backend-created data URL when image generation succeeds; otherwise the frontend keeps the existing text meme fallback.
 
 ## Testing
 
@@ -83,7 +83,7 @@ Deploy the client and server as separate Node services, or serve the built `clie
 
 ## Future improvements
 
-AI-generated meme images, user accounts, cloud history, more meme templates, voice input, multi-language support, shareable meme links, and analytics.
+User accounts, cloud history, more meme templates, voice input, multi-language support, shareable meme links, and analytics.
 
 ## Common fixes
 
